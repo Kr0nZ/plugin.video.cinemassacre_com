@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 import urllib,urllib2,re,xbmcplugin,xbmcgui,sys,xbmcaddon,base64,socket
-import CommonFunctions, urlparse
+import CommonFunctions, urlparse, os
 try:
   import StorageServer
 except:
@@ -26,18 +26,18 @@ viewMode=str(addon.getSetting("viewMode"))
 
 baseUrl = "http://cinemassacre.com"
 
-##def writeLineToFile(lineToWrite):
-##        f = open('C:\\Users\\Demon\\AppData\\Roaming\\XBMC\\addons\\plugin.video.cinemassacre_com\\log.file','a')
-##        ##f.write(lineToWrite+'\n')
-##        print(lineToWrite, file=f)
-##        f.close()
+#def writeLineToFile(lineToWrite):
+#        f = open('C:\\Users\\Demon\\AppData\\Roaming\\XBMC\\addons\\plugin.video.cinemassacre_com\\log.file','a')
+#        ##f.write(lineToWrite+'\n')
+#        print(lineToWrite, file=f)
+#        f.close()
 
 def index():
-        addDir("Angry Video Game Nerd","/category/avgn/",'listVideos',"")
+        addDir("Angry Video Game Nerd","/category/avgn/",'listVideos',os.path.join(addon.getAddonInfo('path'),"avgn.png"))
         ##addDir("Board James (WIP / Not Working)","/category/boardjames/",'listVideos',"")
-        addDir("Movie Reviews","/category/moviereviews/",'listVideos',"")
-        addDir("You Know What's BullShit","/category/ykwb/",'listVideos',"")
-        addDir("Films","/category/films/",'listVideos',"")
+        addDir("Movie Reviews","/category/moviereviews/",'listVideos',os.path.join(addon.getAddonInfo('path'),"icon.png"))
+        addDir("You Know What's BullShit","/category/ykwb/",'listVideos',os.path.join(addon.getAddonInfo('path'),"ykwbs.png"))
+        addDir("Films","/category/films/",'listVideos',os.path.join(addon.getAddonInfo('path'),"icon.png"))
         xbmcplugin.endOfDirectory(pluginhandle)
         if forceViewMode==True:
           xbmc.executebuiltin('Container.SetViewMode('+viewMode+')')
@@ -60,12 +60,27 @@ def listVideos(url):
               linkUrl = common.parseDOM(linkh3, "a", ret="href")[0]
               linkTitle = common.parseDOM(linkh3, "a")[0]
               linkDate = common.parseDOM(theLinks[i], "div", attrs={"class": "video-date"})[0]
+              
+              linkImage = common.parseDOM(theLinks[i], "div", attrs={"class": "video-tnail"})
+              linkImage = common.parseDOM(linkImage, "img", ret="src")
+              linkImageTmp = re.compile('src=([^&]*)', re.DOTALL).findall(linkImage[0])
+              if len(linkImageTmp)>0:
+                if linkImageTmp[0][:1] != "/":
+                  linkImageTmp[0] = "/" + linkImageTmp[0]
+                linkImage = baseUrl+linkImageTmp[0]
+              else:
+                if len(linkImage[0])>0 and baseUrl in linkImage[0]:
+                  linkImage = linkImage[0]
+                else:
+                  linkImage = ""
+              
+              
               linkDate = re.compile('(.+?)<span>|</span>', re.DOTALL).findall(linkDate)[0]
               linkTitle = linkTitle+" ("+linkDate.strip()+")"
               linkTitle = linkTitle.encode('ascii', 'ignore')
               linkTitle = cleanTitle(linkTitle)
               
-              linkItem = {"title":linkTitle, "url":linkUrl}
+              linkItem = {"title":linkTitle, "url":linkUrl, "thumb":linkImage}
               linkList.append(linkItem)
 
             ##Check Cache
@@ -94,7 +109,7 @@ def listVideos(url):
         cache.set(url, repr(linkList)) #update cache
         
         for i in range(0,len(linkList)):
-            addLink(linkList[i]['title'],linkList[i]['url'],'playVideo',"")
+            addLink(linkList[i]['title'],linkList[i]['url'],'playVideo',linkList[i]['thumb'])
             
         xbmcplugin.endOfDirectory(pluginhandle)
         if forceViewMode==True:
@@ -176,6 +191,7 @@ def playVideo(url):
           listitem = xbmcgui.ListItem(path=metaUrl[0])
           return xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
         
+        xbmc.executebuiltin("Notification(ERROR - No Video Found,No Video found on page: "+url+",10000)")
         ##common.log("Could not load video from url " + url)
 
 def cleanTitle(title):
