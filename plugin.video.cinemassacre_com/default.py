@@ -25,6 +25,18 @@ else:
 viewMode=str(addon.getSetting("viewMode"))
 
 baseUrl = "http://cinemassacre.com"
+dontShowTheseUrls = []
+dontShowTheseUrls.append("/fanstuff/")
+dontShowTheseUrls.append("/full-list-of-avgn-videos/")
+dontShowTheseUrls.append("/fan-art-page")
+dontShowTheseUrls.append("/2011/01/19/avgn-iphone-game-texting-of-the-bread/")
+dontShowTheseUrls.append("/2010/03/10/avgn-game-over-2-by-gavin-maclean/")
+dontShowTheseUrls.append("/2009/08/17/avgn-ko-boxing/")
+dontShowTheseUrls.append("/2009/01/19/11909-avgn-game-over-by-gavin-maclean/")
+dontShowTheseUrls.append("/2008/08/03/the-avgn-in-pixel-land-blast-by-kevin-berryman/")
+dontShowTheseUrls.append("/2008/02/25/the-angry-video-game-by-eric-ruth/")
+dontShowTheseUrls.append("/fan-songs-page")
+#dontShowTheseUrls.append("")
 
 #def writeLineToFile(lineToWrite):
 #        f = open('C:\\Users\\Demon\\AppData\\Roaming\\XBMC\\addons\\plugin.video.cinemassacre_com\\log.file','a')
@@ -33,17 +45,50 @@ baseUrl = "http://cinemassacre.com"
 #        f.close()
 
 def index():
-        addDir("Angry Video Game Nerd","/category/avgn/",'listVideos',os.path.join(addon.getAddonInfo('path'),"avgn.png"))
-        addDir("Board James","/category/boardjames/",'listVideos',"")
-        addDir("Movie Reviews","/category/moviereviews/",'listVideos',os.path.join(addon.getAddonInfo('path'),"icon.png"))
-        addDir("You Know What's BullShit","/category/ykwb/",'listVideos',os.path.join(addon.getAddonInfo('path'),"ykwbs.png"))
-        addDir("Films","/category/films/",'listVideos',os.path.join(addon.getAddonInfo('path'),"icon.png"))
+        addDir("Angry Video Game Nerd","/category/avgn/","listCategories",os.path.join(addon.getAddonInfo('path'),"avgn.png"))
+        addDir("Board James","/category/boardjames/","listCategories",os.path.join(addon.getAddonInfo('path'),"boardJ.png"))
+        addDir("Movie Reviews","/category/moviereviews/","listCategories",os.path.join(addon.getAddonInfo('path'),"icon.png"))
+        addDir("You Know What's BullShit","/category/ykwb/","listCategories",os.path.join(addon.getAddonInfo('path'),"ykwbs.png"))
+        addDir("Films","/category/films/","listCategories",os.path.join(addon.getAddonInfo('path'),"icon.png"))
         xbmcplugin.endOfDirectory(pluginhandle)
         if forceViewMode==True:
           xbmc.executebuiltin('Container.SetViewMode('+viewMode+')')
 
+def excludeUrl(url):
+        for notUrl in dontShowTheseUrls:
+          if notUrl in url:
+            return True
+        return False
+        
+def listCategories(url):
+        getThisUrl = baseUrl+url
+        if baseUrl in url:
+          getThisUrl = url
+        addDir("All Videos",getThisUrl,'listVideos',"")
+        tmpContent = getUrl(getThisUrl)
+        navList = common.parseDOM(tmpContent, "div", attrs={"id": "nav"})
+        navList = common.parseDOM(navList, "ul", attrs={"id": "navlist"})
+        liList = common.parseDOM(navList, "li", ret="class")
+        curCat = ""
+        for i in range(0,len(liList)):
+          if "current-cat" in liList[i]:
+            curCat = liList[i]
+            break
+        liList = common.parseDOM(navList, "li", attrs={"class": curCat})
+        liList = common.parseDOM(liList, "ul", attrs={"class": "children"})
+        if len(liList)>0:
+          liList = liList[0]
+        navUrls = re.compile('<a(?:.+?)href=(?:[\'|\"]*)([^\'|\"]*)(?:[\'|\"]*)(?:[^\>]*)>([^\<]*)</a>', re.DOTALL).findall(liList)
+        for i in range(0,len(navUrls)):
+          if excludeUrl(navUrls[i][0]):
+            continue
+          addDir(cleanTitle(navUrls[i][1].encode('ascii', 'ignore')),navUrls[i][0],'listVideos',"")
+        xbmcplugin.endOfDirectory(pluginhandle)
+
 def listVideos(url):
         getThisUrl = baseUrl+url
+        if baseUrl in url:
+          getThisUrl = url
         content = ""
         nextPage = 1
         curPage = 1
@@ -58,6 +103,9 @@ def listVideos(url):
             for i in range(0,len(theLinks)):
               linkh3 = common.parseDOM(theLinks[i], "h3")
               linkUrl = common.parseDOM(linkh3, "a", ret="href")[0]
+              if excludeUrl(linkUrl):
+                continue
+              
               linkTitle = common.parseDOM(linkh3, "a")[0]
               linkDate = common.parseDOM(theLinks[i], "div", attrs={"class": "video-date"})[0]
               
@@ -306,5 +354,7 @@ if mode == 'listVideos':
     listVideos(url)
 elif mode == 'playVideo':
     playVideo(url)
+elif mode == 'listCategories':
+    listCategories(url)
 else:
     index()
