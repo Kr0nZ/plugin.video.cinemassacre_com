@@ -34,7 +34,7 @@ baseUrl = "http://cinemassacre.com"
 
 def index():
         addDir("Angry Video Game Nerd","/category/avgn/",'listVideos',os.path.join(addon.getAddonInfo('path'),"avgn.png"))
-        ##addDir("Board James (WIP / Not Working)","/category/boardjames/",'listVideos',"")
+        addDir("Board James","/category/boardjames/",'listVideos',"")
         addDir("Movie Reviews","/category/moviereviews/",'listVideos',os.path.join(addon.getAddonInfo('path'),"icon.png"))
         addDir("You Know What's BullShit","/category/ykwb/",'listVideos',os.path.join(addon.getAddonInfo('path'),"ykwbs.png"))
         addDir("Films","/category/films/",'listVideos',os.path.join(addon.getAddonInfo('path'),"icon.png"))
@@ -190,6 +190,54 @@ def playVideo(url):
           metaUrl = common.parseDOM(tmpContent, "media:content", attrs={"medium": "video"}, ret="url")
           listitem = xbmcgui.ListItem(path=metaUrl[0])
           return xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
+        
+        ## How To RTMP stream:
+        ## swfVfy = "http://player.screenwavemedia.com/play/jwplayer/player.swf"
+        ## rtmpurl = 'rtmp://video1.screenwavemedia.com/Cinemassacre/mp4:Cinemassacre-13623_high.mp4'
+        ## pageurl = 'http://cinemassacre.com/2012/01/25/board-james-doggie-doo/'
+        ## playpath = 'mp4:Cinemassacre-13623_high.mp4'
+        ## segmentUrl = rtmpurl + " playpath=" + playpath + " pageurl=" + pageurl + " swfVfy=" + swfVfy
+        ## item = xbmcgui.ListItem('RTMP Stream',path=segmentUrl)
+        ## item.setInfo( type="Video", infoLabels={ "Title": "RTMP Stream" } )
+        ## return xbmcplugin.setResolvedUrl(pluginhandle, True, item)
+        
+        objectDataUrl = common.parseDOM(vidContent, "script", attrs={"type": "text/javascript"}, ret="src")
+
+        for i in range(0,len(objectDataUrl)):
+          if "screenwavemedia.com" in objectDataUrl[i] and "embed.php" in objectDataUrl[i]:
+            vidUrl = objectDataUrl[i]
+            break
+
+        if len(vidUrl)>0:
+          tmpContent = getUrl(vidUrl)
+          
+          streamerVal = re.compile('streamer(?:[\'|\"]*):(?:[\s|\'|\"]*)([^\']*)', re.DOTALL).findall(tmpContent)
+          flashplayerVal = re.compile('flashplayer(?:[\'|\"]*):(?:[\s|\'|\"]*)([^\']*)', re.DOTALL).findall(tmpContent)
+          levelsVal = re.compile('levels(?:[\'|\"]*): \[(.*)\],', re.DOTALL).findall(tmpContent)
+          files = ""
+          if len(levelsVal)>0:
+            filesVal = re.compile('file(?:[\'|\"]*):(?:[\s|\'|\"]*)([^\'|\"]*)', re.DOTALL).findall(levelsVal[0])
+            for i in range(0,len(filesVal)):
+              if "high" in filesVal[i]:
+                files = filesVal[i]
+                break
+              
+          if len(streamerVal)>0 and len(flashplayerVal)>0 and len(files)>0:
+            rtmpurl = streamerVal[0]
+            swfVfy = flashplayerVal[0]
+            
+            fileExt = re.compile('\.([^.]+)$', re.DOTALL).findall(files)
+            if len(fileExt)>0:
+              files = fileExt[0] + ":" + files
+              
+            if rtmpurl[-1:] != "/":
+              rtmpurl = rtmpurl + "/"
+            rtmpurl = rtmpurl + files
+            
+            segmentUrl = rtmpurl + " playpath=" + files + " pageurl=" + url + " swfVfy=" + swfVfy
+            
+            listitem = xbmcgui.ListItem(path=segmentUrl)
+            return xbmcplugin.setResolvedUrl(pluginhandle, True, listitem)
         
         xbmc.executebuiltin("Notification(ERROR - No Video Found,No Video found on page: "+url+",10000)")
         ##common.log("Could not load video from url " + url)
