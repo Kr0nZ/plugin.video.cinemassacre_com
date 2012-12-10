@@ -14,7 +14,7 @@ common = CommonFunctions
 socket.setdefaulttimeout(30)
 pluginhandle = int(sys.argv[1])
 xbox = xbmc.getCondVisibility("System.Platform.xbox")
-addon = xbmcaddon.Addon(id='plugin.video.cinemassacre_com')
+addon = xbmcaddon.Addon(id='plugin.video.cinemassacre')
 translation = addon.getLocalizedString
 
 forceViewMode=addon.getSetting("forceViewMode")
