@@ -64,7 +64,6 @@ def listCategories(url):
         getThisUrl = baseUrl+url
         if baseUrl in url:
           getThisUrl = url
-        addDir("All Videos",getThisUrl,'listVideos',"")
         tmpContent = getUrl(getThisUrl)
         navList = common.parseDOM(tmpContent, "div", attrs={"id": "nav"})
         navList = common.parseDOM(navList, "ul", attrs={"id": "navlist"})
@@ -78,6 +77,10 @@ def listCategories(url):
         liList = common.parseDOM(liList, "ul", attrs={"class": "children"})
         if len(liList)>0:
           liList = liList[0]
+        else:
+          listVideos(url)
+          return
+        addDir("All Videos",getThisUrl,'listVideos',"")
         navUrls = re.compile('<a(?:.+?)href=(?:[\'|\"]*)([^\'|\"]*)(?:[\'|\"]*)(?:[^\>]*)>([^\<]*)</a>', re.DOTALL).findall(liList)
         for i in range(0,len(navUrls)):
           if excludeUrl(navUrls[i][0]):
